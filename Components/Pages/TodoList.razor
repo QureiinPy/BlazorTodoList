@@ -1,0 +1,160 @@
+﻿@page "/todolist"
+@* @inject AppDbContext db *@
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+@using BlazorTodo.DB
+
+<PageTitle>Todo List</PageTitle>
+
+<div class="card-header d-flex justify-content-between ">
+    <h1><a class="navbar-brand link text-dark" href="/">Home</a> TodoList </h1>
+    <a class="btn btn-success align-self-center" style="align-items:end; align-content:end; font-style: normal; font-family: 'Cascadia Mono'; color: white;" @onclick="ChangeBody">Add</a>
+</div>
+
+@if (!isNewTaskBody)
+{
+    <div class="container">
+        <table class="table  table-bordered table-hover m-3">
+            <thead>
+                <tr><th>№</th><th>Задача</th><th>Описание</th><th>Создано</th><th>Обновлено</th><th>Выполнено</th></tr>
+            </thead>
+            <tbody>
+                    @using (var db = new AppDbContext())
+                    {
+                        @if (db.Tasks.Count() == 0)
+                        {
+                        <tr>
+                            <td>None</td>
+                            <td>None</td>
+                            <td>None</td>
+                            <td>None</td>
+                            <td>None</td>
+                            <td>None</td>
+                         </tr>
+                        }
+                        else
+                        {
+                            @foreach (Model.Task task in db.Tasks)
+                            {
+                        <tr @ondblclick="() => SoloTaskView(task.TaskId)">
+                            <td>@task.TaskId</td>
+                            <td>@task.Title</td>
+                            <td>@task.Description</td>
+                            <td>@task.CreatedOn</td>
+                            <td>@task.UpdatedOn</td>
+                                    @if (task.IsDone == true)
+                                    {
+                                <td>
+                                    YES
+                                </td>
+                                    }
+                                    else
+                                    {
+                                <td>
+                                    NO
+                                </td>
+                                    }
+                            <div class="m-2">
+                                <button class="btn btn-success text-center" style="align-items:end; align-content:end; font-style: normal; font-family: 'Cascadia Mono';" @onclick="() => HandleDoneButtonChange(task.TaskId)">Done</button>
+                            </div>
+                            <div class="m-2">
+                                <button class="btn btn-danger text-center" style="align-items:end; align-content:end; font-style: normal; font-family: 'Cascadia Mono';" @onclick="() => DeleteTask(task.TaskId)">Delete</button>
+                            </div>
+                        </tr>
+                        @* <div>
+                            <input type="checkbox" />
+                        </div> *@
+                            }
+                        }
+                    }
+            </tbody>
+        </table>
+    </div>
+
+}
+else
+{
+    <form>
+        <div class="" style="">
+            <div>
+                <input class="m-2" type="text" style="width: 500px; height: 40px; font-family: 'Cascadia Mono'; font-weight: 700" placeholder="Title..." @bind="title" />
+            </div>
+            <br />
+            <div>
+                <input class="m-2 align-text-top" type="text" style="width: 500px; height: 200px; font-family: 'Cascadia Mono'; font-weight: 700; vertical-align: top;" placeholder="Description..." @bind="description" autocomplete="off" />
+                <a class="btn btn-success align-self-center" style="align-items:end; align-content:end; font-style: normal; font-family: 'Cascadia Mono'; color: white;" @onclick="() => {ChangeBody(); AddNewTask(new Model.Task{Title = title, Description = description});}">Save</a>
+            </div>
+        </div>
+    </form>
+
+}
+
+
+@* <script src="_framework/blazor.web.js"></script> *@
+
+@* Bootstrap *@
+<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+@code {
+    //new task DTO
+    private string title;
+    public string description;
+
+    bool isNewTaskBody = false;
+
+    private void ChangeBody()
+    {
+        isNewTaskBody = !isNewTaskBody;
+    }
+
+    private void HandleDoneButtonChange(int taskId)
+    {
+        using(var db = new AppDbContext())
+        {
+            var complitedTask = db.Tasks.Where(task => task.TaskId == taskId).FirstOrDefault();
+            db.Update<Model.Task>(complitedTask);
+            complitedTask.IsDone = true;
+            db.SaveChanges();
+        }
+    }
+
+    private void SoloTaskView(int taskId)
+    {
+        NavigationManager.NavigateTo($"/todolist/{taskId}");
+    }
+
+    //TodoList Logic (BL)
+
+    private void AddNewTask(Model.Task newDTOTask)
+    {
+        using(var db = new AppDbContext())
+        {
+            var newTask = new Model.Task { Title = newDTOTask.Title, Description = newDTOTask.Description };
+            db.Add(newTask);
+            db.SaveChanges();
+            Console.WriteLine("Task добавлена");
+        }
+    }
+
+    private void DeleteTask(int deleteTaskId)
+    {
+        try
+        {
+            using (var db = new AppDbContext())
+            {
+                var deletedTask = db.Tasks.Where(task => task.TaskId == deleteTaskId).FirstOrDefault();
+                db.Tasks.Remove(deletedTask);
+                db.SaveChanges();
+                Console.WriteLine($"{deleteTaskId} - Task удалена");
+            }
+        }
+        catch (Exception ex)
+        {
+            NavigationManager.NavigateTo($"/todolist");
+        }
+    }
+}
